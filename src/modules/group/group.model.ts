@@ -1,23 +1,17 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-export interface IUnit extends Document {
-    label: string;
-    value: string;
+export interface IGroup extends Document {
+    name: string;
     status: "active" | "inactive";
     createdAt: Date;
     updatedAt: Date;
 }
 
-const unitSchema = new Schema<IUnit>(
+const groupSchema = new Schema<IGroup>(
     {
-        label: {
+        name: {
             type: String,
-            required: [true, "Label is required"],
-            trim: true,
-        },
-        value: {
-            type: String,
-            required: [true, "Value is required"],
+            required: [true, "Name is required"],
             trim: true,
         },
         status: {
@@ -31,4 +25,4 @@ const unitSchema = new Schema<IUnit>(
     }
 );
 
-export const Unit = mongoose.model<IUnit>("Unit", unitSchema);
+export const Group = mongoose.model<IGroup>("Group", groupSchema);

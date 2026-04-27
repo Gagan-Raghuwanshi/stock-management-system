@@ -1,10 +1,9 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serveStatic } from "hono/bun";
+import routes from "./routes";
 
 const app = new Hono();
-
-// ✅ Allow ALL CORS
 
 
 const allowedOrigins = [
@@ -33,7 +32,7 @@ app.use(
   })
 );
 
-// add routes here
+app.route("/api", routes);
 
 
 export default app;
