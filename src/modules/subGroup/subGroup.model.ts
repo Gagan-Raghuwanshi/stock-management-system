@@ -14,16 +14,19 @@ const subGroupSchema = new Schema<ISubGroup>(
             type: Schema.Types.ObjectId,
             ref: "Group",
             required: [true, "Group ID is required"],
+            index: true,
         },
         name: {
             type: String,
             required: [true, "Name is required"],
             trim: true,
+            index: true,
         },
         status: {
             type: String,
             enum: ["active", "inactive"],
             default: "active",
+            index: true,
         },
     },
     {

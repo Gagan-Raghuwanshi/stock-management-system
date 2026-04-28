@@ -13,11 +13,13 @@ const groupSchema = new Schema<IGroup>(
             type: String,
             required: [true, "Name is required"],
             trim: true,
+            index: true,
         },
         status: {
             type: String,
             enum: ["active", "inactive"],
             default: "active",
+            index: true,
         },
     },
     {

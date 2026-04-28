@@ -15,10 +15,20 @@ export const getGroups = async (c: Context) => {
     try {
         const page = Number(c.req.query("page")) || 1;
         const limit = Number(c.req.query("limit")) || 10;
+        const search = c.req.query("search");
+        const status = c.req.query("status");
         const skip = (page - 1) * limit;
 
-        const total = await Group.countDocuments();
-        const groups = await Group.find().skip(skip).limit(limit).sort({ createdAt: -1 });
+        const query: any = {};
+        if (search) {
+            query.name = { $regex: search, $options: "i" };
+        }
+        if (status) {
+            query.status = status;
+        }
+
+        const total = await Group.countDocuments(query);
+        const groups = await Group.find(query).skip(skip).limit(limit).sort({ createdAt: -1 });
 
         return c.json({
             success: true,

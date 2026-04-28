@@ -15,10 +15,23 @@ export const getUnits = async (c: Context) => {
     try {
         const page = Number(c.req.query("page")) || 1;
         const limit = Number(c.req.query("limit")) || 10;
+        const search = c.req.query("search");
+        const status = c.req.query("status");
         const skip = (page - 1) * limit;
 
-        const total = await Unit.countDocuments();
-        const units = await Unit.find().skip(skip).limit(limit).sort({ createdAt: -1 });
+        const query: any = {};
+        if (search) {
+            query.$or = [
+                { label: { $regex: search, $options: "i" } },
+                { value: { $regex: search, $options: "i" } },
+            ];
+        }
+        if (status) {
+            query.status = status;
+        }
+
+        const total = await Unit.countDocuments(query);
+        const units = await Unit.find(query).skip(skip).limit(limit).sort({ createdAt: -1 });
 
         return c.json({
             success: true,

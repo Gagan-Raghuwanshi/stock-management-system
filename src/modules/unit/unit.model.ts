@@ -14,16 +14,19 @@ const unitSchema = new Schema<IUnit>(
             type: String,
             required: [true, "Label is required"],
             trim: true,
+            index: true,
         },
         value: {
             type: String,
             required: [true, "Value is required"],
             trim: true,
+            index: true,
         },
         status: {
             type: String,
             enum: ["active", "inactive"],
             default: "active",
+            index: true,
         },
     },
     {

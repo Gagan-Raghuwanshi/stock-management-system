@@ -15,10 +15,30 @@ export const getVendors = async (c: Context) => {
     try {
         const page = Number(c.req.query("page")) || 1;
         const limit = Number(c.req.query("limit")) || 10;
+        const search = c.req.query("search");
+        const itemId = c.req.query("itemId");
         const skip = (page - 1) * limit;
 
-        const total = await Vendor.countDocuments();
-        const vendors = await Vendor.find().populate("itemId").skip(skip).limit(limit).sort({ createdAt: -1 });
+        const query: any = {};
+        if (search) {
+            query.$or = [
+                { vendorCode: { $regex: search, $options: "i" } },
+                { name: { $regex: search, $options: "i" } },
+                { gstNumber: { $regex: search, $options: "i" } },
+                { contactPerson: { $regex: search, $options: "i" } },
+                { contactNumber: { $regex: search, $options: "i" } },
+            ];
+        }
+        if (itemId) {
+            query.itemId = itemId;
+        }
+
+        const total = await Vendor.countDocuments(query);
+        const vendors = await Vendor.find(query)
+            .populate("itemId")
+            .skip(skip)
+            .limit(limit)
+            .sort({ createdAt: -1 });
 
         return c.json({
             success: true,

@@ -20,6 +20,7 @@ const categorySchema = new Schema<ICategory>(
             type: String,
             required: [true, "Category name is required"],
             trim: true,
+            index: true,
         },
     },
     {

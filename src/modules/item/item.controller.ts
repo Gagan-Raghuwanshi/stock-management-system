@@ -15,10 +15,41 @@ export const getItems = async (c: Context) => {
     try {
         const page = Number(c.req.query("page")) || 1;
         const limit = Number(c.req.query("limit")) || 10;
+        const search = c.req.query("search");
+        const blockItem = c.req.query("blockItem");
+        const unitId = c.req.query("unitId");
+        const groupId = c.req.query("groupId");
+        const subGroupId = c.req.query("subGroupId");
+        const categoryId = c.req.query("categoryId");
         const skip = (page - 1) * limit;
 
-        const total = await Item.countDocuments();
-        const items = await Item.find()
+        const query: any = {};
+        if (search) {
+            query.$or = [
+                { itemName: { $regex: search, $options: "i" } },
+                { itemCode: { $regex: search, $options: "i" } },
+                { HSNcode: { $regex: search, $options: "i" } },
+                { newItemCode: { $regex: search, $options: "i" } },
+            ];
+        }
+        if (blockItem) {
+            query.blockItem = blockItem === "true";
+        }
+        if (unitId) {
+            query.unitId = unitId;
+        }
+        if (groupId) {
+            query.groupId = groupId;
+        }
+        if (subGroupId) {
+            query.subGroupId = subGroupId;
+        }
+        if (categoryId) {
+            query.categoryId = categoryId;
+        }
+
+        const total = await Item.countDocuments(query);
+        const items = await Item.find(query)
             .populate("unitId")
             .populate("groupId")
             .populate("subGroupId")

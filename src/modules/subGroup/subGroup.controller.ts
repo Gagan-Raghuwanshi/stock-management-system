@@ -15,10 +15,24 @@ export const getSubGroups = async (c: Context) => {
     try {
         const page = Number(c.req.query("page")) || 1;
         const limit = Number(c.req.query("limit")) || 10;
+        const search = c.req.query("search");
+        const status = c.req.query("status");
+        const groupId = c.req.query("groupId");
         const skip = (page - 1) * limit;
 
-        const total = await SubGroup.countDocuments();
-        const subGroups = await SubGroup.find()
+        const query: any = {};
+        if (search) {
+            query.name = { $regex: search, $options: "i" };
+        }
+        if (status) {
+            query.status = status;
+        }
+        if (groupId) {
+            query.groupId = groupId;
+        }
+
+        const total = await SubGroup.countDocuments(query);
+        const subGroups = await SubGroup.find(query)
             .populate("groupId", "name")
             .skip(skip)
             .limit(limit)

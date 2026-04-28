@@ -34,15 +34,18 @@ const itemSchema = new Schema<IItem>(
         HSNcode: {
             type: String,
             trim: true,
+            index: true,
         },
         itemName: {
             type: String,
             required: [true, "Item Name is required"],
             trim: true,
+            index: true,
         },
         blockItem: {
             type: Boolean,
             default: false,
+            index: true,
         },
         specification: {
             type: String,
@@ -67,18 +70,22 @@ const itemSchema = new Schema<IItem>(
         unitId: {
             type: Schema.Types.ObjectId,
             ref: "Unit",
+            index: true,
         },
         groupId: {
             type: Schema.Types.ObjectId,
             ref: "Group",
+            index: true,
         },
         subGroupId: {
             type: Schema.Types.ObjectId,
             ref: "SubGroup",
+            index: true,
         },
         categoryId: {
             type: Schema.Types.ObjectId,
             ref: "Category",
+            index: true,
         },
         newItemCode: {
             type: String,

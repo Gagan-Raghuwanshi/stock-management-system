@@ -15,10 +15,16 @@ export const getCategories = async (c: Context) => {
     try {
         const page = Number(c.req.query("page")) || 1;
         const limit = Number(c.req.query("limit")) || 10;
+        const search = c.req.query("search");
         const skip = (page - 1) * limit;
 
-        const total = await Category.countDocuments();
-        const categories = await Category.find()
+        const query: any = {};
+        if (search) {
+            query.name = { $regex: search, $options: "i" };
+        }
+
+        const total = await Category.countDocuments(query);
+        const categories = await Category.find(query)
             .populate("groupIds", "name")
             .skip(skip)
             .limit(limit)

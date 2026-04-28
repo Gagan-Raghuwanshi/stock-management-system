@@ -24,6 +24,7 @@ const vendorSchema = new Schema<IVendor>(
             type: String,
             required: [true, "Name is required"],
             trim: true,
+            index: true,
         },
         address: {
             type: String,
@@ -32,18 +33,22 @@ const vendorSchema = new Schema<IVendor>(
         gstNumber: {
             type: String,
             trim: true,
+            index: true,
         },
         contactPerson: {
             type: String,
             trim: true,
+            index: true,
         },
         contactNumber: {
             type: String,
             trim: true,
+            index: true,
         },
         itemId: {
             type: Schema.Types.ObjectId,
             ref: "Item",
+            index: true,
         },
     },
     {
