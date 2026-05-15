@@ -10,6 +10,8 @@ import towerRoutes from "./modules/tower/tower.route";
 import floorRoutes from "./modules/tower-floor/floor.route";
 import outsideRoutes from "./modules/tower-outside/outside.route";
 import flatRoutes from "./modules/flat/flat.route";
+import assetRoutes from "./modules/assets/asset.route";
+import trackAssetRoutes from "./modules/assetTrack/trackAssetRecords.route";
 
 const routes = new Hono();
 
@@ -24,5 +26,7 @@ routes.route("/towers", towerRoutes);
 routes.route("/floors", floorRoutes);
 routes.route("/outsides", outsideRoutes);
 routes.route("/flats", flatRoutes);
+routes.route("/assets", assetRoutes);
+routes.route("/track-assets", trackAssetRoutes);
 
 export default routes;
