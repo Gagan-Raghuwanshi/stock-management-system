@@ -6,17 +6,19 @@ import routes from "./routes";
 const app = new Hono();
 
 
-const allowedOrigins = [
-  "*"
-];
+// const allowedOrigins = [
+//   "*"
+// ];
 
-app.use("*", cors({
-  origin: (origin) => {
-    if (!origin) return origin; // allow Postman / server calls
-    return allowedOrigins.includes(origin) ? origin : "";
-  },
-  credentials: true,
-}));
+// app.use("*", cors({
+//   origin: (origin) => {
+//     if (!origin) return origin; // allow Postman / server calls
+//     return allowedOrigins.includes(origin) ? origin : "";
+//   },
+//   credentials: true,
+// }));
+
+app.use(cors());
 
 app.get("/", (c) => {
   return c.json({ message: "CRM API running 🚀" });
