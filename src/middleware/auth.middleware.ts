@@ -62,8 +62,8 @@ export const auth = async (c: Context, next: Next) => {
       isActive: true,
     })
       .populate("roleId", "name permissions scope")
-      .populate("unitIds", "name type")
-      .populate("primaryUnitId", "name type");
+      .populate("nodeIds", "name type")
+      .populate("primaryNodeId", "name type");
 
     if (!user) {
       return c.json(

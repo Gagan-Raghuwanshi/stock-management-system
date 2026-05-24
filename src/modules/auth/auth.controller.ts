@@ -43,8 +43,8 @@ export const login = async (c: Context) => {
     })
       .select("+password")
       .populate("roleId", "name permissions scope")
-      .populate("unitIds", "name type")
-      .populate("primaryUnitId", "name type");
+      .populate("nodeIds", "name type")
+      .populate("primaryNodeId", "name type");
 
     if (!user) {
       return c.json(
