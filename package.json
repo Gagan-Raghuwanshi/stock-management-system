@@ -15,7 +15,7 @@
   "scripts": {
     "start": "bun run src/server.ts",
     "dev": "bun --watch src/server.ts",
-    "create:admin": "bun run src/scripts/createAdmin.ts"
+    "create:superadmin": "bun run src/scripts/createSuperAdmin.ts"
   },
   "peerDependencies": {
     "typescript": "^5"

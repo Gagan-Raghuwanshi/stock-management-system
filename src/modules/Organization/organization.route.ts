@@ -6,12 +6,12 @@ import { createOrganization, getAllOrganizations,  getOrganizationById,  updateO
 
 export const organizationRoutes = new Hono();
 
-organizationRoutes.post("/organizations",auth,checkPermission("organization:create"),createOrganization);
+organizationRoutes.post("/",auth,checkPermission("organization:create"),createOrganization);
 
-organizationRoutes.get( "/organizations", auth, checkPermission("organization:view"), getAllOrganizations);
+organizationRoutes.get("/", auth, checkPermission("organization:view"), getAllOrganizations);
 
-organizationRoutes.get("/organizations/:id",auth,checkPermission("organization:view"), getOrganizationById);
+organizationRoutes.get("/:id",auth,checkPermission("organization:view"), getOrganizationById);
 
-organizationRoutes.patch("/organizations/:id",auth,checkPermission("organization:update"),updateOrganization);
+organizationRoutes.patch("/:id",auth,checkPermission("organization:update"),updateOrganization);
 
-organizationRoutes.delete("/organizations/:id", auth, checkPermission("organization:delete"), deleteOrganization);
+organizationRoutes.delete("/:id", auth, checkPermission("organization:delete"), deleteOrganization);

@@ -12,6 +12,9 @@ import outsideRoutes from "./modules/tower-outside/outside.route";
 import flatRoutes from "./modules/flat/flat.route";
 import assetRoutes from "./modules/assets/asset.route";
 import trackAssetRoutes from "./modules/assetTrack/trackAssetRecords.route";
+import { authRoutes } from "./modules/auth/auth.route";
+import { organizationRoutes } from "./modules/Organization/organization.route";
+import { roleRoutes } from "./modules/roles/role.route";
 
 const routes = new Hono();
 
@@ -28,5 +31,10 @@ routes.route("/outsides", outsideRoutes);
 routes.route("/flats", flatRoutes);
 routes.route("/assets", assetRoutes);
 routes.route("/track-assets", trackAssetRoutes);
+routes.route("/role", roleRoutes);
+
+
+routes.route("/organizations", organizationRoutes);
+routes.route("/auth", authRoutes);
 
 export default routes;

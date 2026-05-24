@@ -37,10 +37,7 @@ app.use(
 
 app.route("/api", routes);
 
-app.route("/api", organizationRoutes);
 
-
-app.route("/api", authRoutes);
 
 
 export default app;

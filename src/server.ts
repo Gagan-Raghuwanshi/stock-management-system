@@ -12,4 +12,4 @@ serve({
   port: 9090,
 });
 
-console.log("🚀 Server running on http://localhost:5000");
+console.log("🚀 Server running on http://localhost:9090");

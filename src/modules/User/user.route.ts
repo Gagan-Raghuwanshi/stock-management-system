@@ -1,13 +1,13 @@
 import { Hono } from "hono";
-import { auth } from "../middleware/auth";
-import { checkPermission } from "../middleware/permission";
+import { auth } from "../../middleware/auth.middleware";
+import { checkPermission } from "../../middleware/permission.middleware";
 import {
   createUser,
   getAllUsers,
   getUserById,
   updateUser,
   deleteUser,
-} from "../controllers/user.controller";
+} from "./user.controller";
 
 export const userRoutes = new Hono();
 

@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import mongoose from "mongoose";
-import { Role } from "../models/role.model";
+import { Role } from "./role.model";
 
 const isValidObjectId = (id: any) => mongoose.Types.ObjectId.isValid(id);
 
