@@ -6,12 +6,25 @@ import { buildScopeFilter } from "../../utils/buildScopeFilter";
 const isMongoId = (id: string): boolean =>
   mongoose.Types.ObjectId.isValid(id);
 
+const getUserNodeId = (user: any) => {
+  return user.nodeId || user.nodeIds?.[0] || null;
+};
+
 export const createGeofence = async (c: Context) => {
   try {
     const user = c.get("user");
     const body = await c.req.json();
 
-    if (!body.name || body.latitude === undefined || body.longitude === undefined) {
+    const {
+      name,
+      latitude,
+      longitude,
+      radiusInMeters,
+      address,
+      status,
+    } = body;
+
+    if (!name || latitude === undefined || longitude === undefined) {
       return c.json(
         {
           success: false,
@@ -21,13 +34,12 @@ export const createGeofence = async (c: Context) => {
       );
     }
 
-    if (body.nodeId && !isMongoId(body.nodeId)) {
-      return c.json({ success: false, message: "Invalid nodeId" }, 400);
-    }
+    const nodeId = getUserNodeId(user);
 
     const exists = await Geofence.findOne({
       organizationId: user.organizationId,
-      name: body.name,
+      name,
+      nodeId,
     });
 
     if (exists) {
@@ -41,11 +53,17 @@ export const createGeofence = async (c: Context) => {
     }
 
     const geofence = await Geofence.create({
-      ...body,
+      name,
+      latitude,
+      longitude,
+      radiusInMeters: radiusInMeters || 100,
+      address,
+      status,
+    
       organizationId: user.organizationId,
       ownerId: user._id,
       createdBy: user._id,
-      nodeId: body.nodeId || user.nodeIds?.[0] || null,
+      nodeId,
     });
 
     return c.json(
@@ -89,11 +107,13 @@ export const getGeofences = async (c: Context) => {
       query.status = status;
     }
 
+    // Only for filtering list, not for create/update
     if (nodeId) {
       if (!isMongoId(nodeId)) {
         return c.json({ success: false, message: "Invalid nodeId" }, 400);
       }
-      query.nodeId = nodeId;
+
+      query.nodeId = new mongoose.Types.ObjectId(nodeId);
     }
 
     const total = await Geofence.countDocuments(query);
@@ -101,9 +121,9 @@ export const getGeofences = async (c: Context) => {
     const geofences = await Geofence.find(query)
       .populate("nodeId", "name title")
       .populate("createdBy", "name email")
+      .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit)
-      .sort({ createdAt: -1 });
+      .limit(limit);
 
     return c.json({
       success: true,
@@ -127,11 +147,17 @@ export const getGeofenceById = async (c: Context) => {
     const id = c.req.param("id");
 
     if (!id) {
-      return c.json({ success: false, message: "Geofence id is required" }, 400);
+      return c.json(
+        { success: false, message: "Geofence id is required" },
+        400
+      );
     }
 
     if (!isMongoId(id)) {
-      return c.json({ success: false, message: "Invalid geofence id" }, 400);
+      return c.json(
+        { success: false, message: "Invalid geofence id" },
+        400
+      );
     }
 
     const geofence = await Geofence.findOne({
@@ -162,15 +188,17 @@ export const updateGeofence = async (c: Context) => {
     const body = await c.req.json();
 
     if (!id) {
-      return c.json({ success: false, message: "Geofence id is required" }, 400);
+      return c.json(
+        { success: false, message: "Geofence id is required" },
+        400
+      );
     }
 
     if (!isMongoId(id)) {
-      return c.json({ success: false, message: "Invalid geofence id" }, 400);
-    }
-
-    if (body.nodeId && !isMongoId(body.nodeId)) {
-      return c.json({ success: false, message: "Invalid nodeId" }, 400);
+      return c.json(
+        { success: false, message: "Invalid geofence id" },
+        400
+      );
     }
 
     if (body.name) {
@@ -191,9 +219,11 @@ export const updateGeofence = async (c: Context) => {
       }
     }
 
+    // Never allow frontend to update hierarchy/ownership fields
     delete body.organizationId;
     delete body.ownerId;
     delete body.createdBy;
+    delete body.nodeId;
 
     const geofence = await Geofence.findOneAndUpdate(
       {
@@ -230,11 +260,17 @@ export const deleteGeofence = async (c: Context) => {
     const id = c.req.param("id");
 
     if (!id) {
-      return c.json({ success: false, message: "Geofence id is required" }, 400);
+      return c.json(
+        { success: false, message: "Geofence id is required" },
+        400
+      );
     }
 
     if (!isMongoId(id)) {
-      return c.json({ success: false, message: "Invalid geofence id" }, 400);
+      return c.json(
+        { success: false, message: "Invalid geofence id" },
+        400
+      );
     }
 
     const geofence = await Geofence.findOneAndDelete({

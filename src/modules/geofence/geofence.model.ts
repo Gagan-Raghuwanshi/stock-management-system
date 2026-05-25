@@ -4,7 +4,7 @@ export interface IGeofence extends Document {
   organizationId: mongoose.Types.ObjectId;
   ownerId: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
-  nodeId?: mongoose.Types.ObjectId;
+  nodeId?: mongoose.Types.ObjectId | null;
 
   name: string;
   address?: string;
@@ -37,20 +37,20 @@ const geofenceSchema = new Schema<IGeofence>(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
 
     nodeId: {
       type: Schema.Types.ObjectId,
       ref: "BusinessNode",
-      index: true,
       default: null,
+      index: true,
     },
 
     name: {
       type: String,
       required: [true, "Geofence name is required"],
       trim: true,
-      index: true,
     },
 
     address: {
@@ -62,11 +62,15 @@ const geofenceSchema = new Schema<IGeofence>(
     latitude: {
       type: Number,
       required: [true, "Latitude is required"],
+      min: -90,
+      max: 90,
     },
 
     longitude: {
       type: Number,
       required: [true, "Longitude is required"],
+      min: -180,
+      max: 180,
     },
 
     radiusInMeters: {
@@ -86,10 +90,16 @@ const geofenceSchema = new Schema<IGeofence>(
   { timestamps: true }
 );
 
+// Same organization me same geofence name duplicate nahi hoga
 geofenceSchema.index(
   { organizationId: 1, name: 1 },
   { unique: true }
 );
+
+// Fast CRM hierarchy filters
+geofenceSchema.index({ organizationId: 1, nodeId: 1 });
+geofenceSchema.index({ organizationId: 1, ownerId: 1 });
+geofenceSchema.index({ organizationId: 1, status: 1 });
 
 export const Geofence = mongoose.model<IGeofence>(
   "Geofence",
