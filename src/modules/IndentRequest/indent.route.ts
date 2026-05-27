@@ -18,7 +18,7 @@ indentRoutes.post("/", createIndent);
 indentRoutes.get("/", getAllIndents);
 indentRoutes.get("/:id", getIndentById);
 indentRoutes.patch("/:id", updateIndent);
-indentRoutes.patch("/:id/status", updateIndentStatus);
+indentRoutes.patch("/status/:id", updateIndentStatus);
 indentRoutes.delete("/:id", deleteIndent);
 
 export default indentRoutes;
