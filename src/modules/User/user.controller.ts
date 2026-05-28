@@ -73,6 +73,12 @@ export const createUser = async (c: Context) => {
     const projectId = getStringValue(body.projectId);
     const attendancePolicyId = getStringValue(body.attendancePolicyId);
 
+    // ✅ ONLY ADDED THIS
+    const organizationId =
+      creator.role === "superAdmin"
+        ? getStringValue(body.organizationId)
+        : creator.organizationId;
+
     const nodeIds = getNodeIdsFromBody(body);
 
     const uploadedProfileImage =
@@ -89,7 +95,6 @@ export const createUser = async (c: Context) => {
         400
       );
     }
-    
 
     if (!isValidObjectId(roleId)) {
       return c.json({ success: false, message: "Invalid roleId" }, 400);
@@ -125,7 +130,7 @@ export const createUser = async (c: Context) => {
     }
 
     const existingUser = await User.findOne({
-      organizationId: creator.organizationId,
+      organizationId,
       email: email.toLowerCase(),
     });
 
@@ -135,7 +140,7 @@ export const createUser = async (c: Context) => {
 
     const role = await Role.findOne({
       _id: roleId,
-      organizationId: creator.organizationId,
+      organizationId,
       isActive: true,
     });
 
@@ -146,7 +151,7 @@ export const createUser = async (c: Context) => {
     if (nodeIds.length > 0) {
       const unitsCount = await BusinessNode.countDocuments({
         _id: { $in: nodeIds },
-        organizationId: creator.organizationId,
+        organizationId,
         isActive: true,
       });
 
@@ -173,7 +178,7 @@ export const createUser = async (c: Context) => {
     if (reportsTo) {
       parentUser = await User.findOne({
         _id: reportsTo,
-        organizationId: creator.organizationId,
+        organizationId,
         isActive: true,
       });
 
@@ -192,7 +197,7 @@ export const createUser = async (c: Context) => {
       : [];
 
     const user = await User.create({
-      organizationId: creator.organizationId,
+      organizationId,
       name,
       email: email.toLowerCase(),
       mobile: mobile || null,
@@ -240,6 +245,8 @@ export const createUser = async (c: Context) => {
     );
   }
 };
+
+
 export const getAllUsers = async (c: Context) => {
   try {
     const loggedInUser = c.get("user");
@@ -344,6 +351,11 @@ export const updateUser = async (c: Context) => {
     const id = c.req.param("id");
     const body = await c.req.parseBody();
 
+    const organizationId =
+      loggedInUser.role === "superAdmin"
+        ? getStringValue(body.organizationId)
+        : loggedInUser.organizationId;
+
     if (!isValidObjectId(id)) {
       return c.json({ success: false, message: "Invalid user id" }, 400);
     }
@@ -351,7 +363,7 @@ export const updateUser = async (c: Context) => {
     const scopeFilter: any = await buildScopeFilter(loggedInUser);
 
     const userFilter: any = {
-      organizationId: scopeFilter.organizationId,
+      organizationId,
     };
 
     if (scopeFilter.ownerId?.$in) {
@@ -387,7 +399,7 @@ export const updateUser = async (c: Context) => {
     if (email) {
       const emailExists = await User.findOne({
         _id: { $ne: id },
-        organizationId: loggedInUser.organizationId,
+        organizationId,
         email: email.toLowerCase(),
       });
 
@@ -405,7 +417,7 @@ export const updateUser = async (c: Context) => {
 
       const role = await Role.findOne({
         _id: roleId,
-        organizationId: loggedInUser.organizationId,
+        organizationId,
         isActive: true,
       });
 
@@ -427,7 +439,7 @@ export const updateUser = async (c: Context) => {
 
       const unitsCount = await BusinessNode.countDocuments({
         _id: { $in: nodeIds },
-        organizationId: loggedInUser.organizationId,
+        organizationId,
         isActive: true,
       });
 
@@ -476,7 +488,7 @@ export const updateUser = async (c: Context) => {
       if (reportsTo) {
         parentUser = await User.findOne({
           _id: reportsTo,
-          organizationId: loggedInUser.organizationId,
+          organizationId,
           isActive: true,
         });
 
