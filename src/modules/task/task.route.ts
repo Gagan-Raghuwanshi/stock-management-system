@@ -14,6 +14,6 @@ taskRoutes.get("/",  auth,  checkPermission("task:view"),  getAllTasks);
 
 taskRoutes.get("/:id", auth, checkPermission("task:view"), getTaskById);
 
-taskRoutes.patch("/:id", auth, checkPermission("task:update"), updateTask);
+taskRoutes.put("/:id", auth, checkPermission("task:update"), updateTask);
 
 taskRoutes.delete("/:id",  auth,  checkPermission("task:delete"),  deleteTask);

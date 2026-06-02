@@ -48,13 +48,6 @@ const taskSchema = new mongoose.Schema(
       index: true,
     },
 
-    labels: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
-
     assignedToId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

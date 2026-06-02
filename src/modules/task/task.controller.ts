@@ -3,25 +3,22 @@ import mongoose from "mongoose";
 
 import { Task } from "./task.model";
 import { User } from "../User/user.model";
-import { BusinessNode } from "../businessNode/businessNode.model";
 
 import { buildScopeFilter } from "../../utils/buildScopeFilter";
 
 const isValidObjectId = (id: any) =>
   mongoose.Types.ObjectId.isValid(id);
 
-
 const adaptTaskScopeFilter = (scopeFilter: any) => {
-    const filter = { ...scopeFilter };
-  
-    if (filter.ownerId) {
-      filter.assignedToId = filter.ownerId;
-      delete filter.ownerId;
-    }
-  
-    return filter;
-  };
+  const filter = { ...scopeFilter };
 
+  if (filter.ownerId) {
+    filter.assignedToId = filter.ownerId;
+    delete filter.ownerId;
+  }
+
+  return filter;
+};
 
 // ======================================================
 // CREATE TASK
@@ -36,29 +33,16 @@ export const createTask = async (c: Context) => {
     const {
       title,
       description,
-      nodeId,
       assignedToId,
       priority,
-      labels,
       dueDate,
     } = body;
 
-    if (!title || !nodeId || !assignedToId) {
+    if (!title || !assignedToId) {
       return c.json(
         {
           success: false,
-          message:
-            "title, nodeId and assignedToId are required",
-        },
-        400
-      );
-    }
-
-    if (!isValidObjectId(nodeId)) {
-      return c.json(
-        {
-          success: false,
-          message: "Invalid nodeId",
+          message: "title and assignedToId are required",
         },
         400
       );
@@ -74,33 +58,17 @@ export const createTask = async (c: Context) => {
       );
     }
 
-    const node = await BusinessNode.findOne({
-      _id: nodeId,
-      organizationId: user.organizationId,
-      isActive: true,
-    });
-
-    if (!node) {
-      return c.json(
-        {
-          success: false,
-          message: "Business node not found",
-        },
-        404
-      );
-    }
-
     const assignedUser = await User.findOne({
       _id: assignedToId,
       organizationId: user.organizationId,
       isActive: true,
     });
 
-    if (!assignedUser) {
+    if (!assignedUser || !assignedUser.nodeIds?.[0]) {
       return c.json(
         {
           success: false,
-          message: "Assigned user not found",
+          message: "Assigned user not found or has no node assigned",
         },
         404
       );
@@ -109,7 +77,7 @@ export const createTask = async (c: Context) => {
     const task = await Task.create({
       organizationId: user.organizationId,
 
-      nodeId,
+      nodeId: assignedUser.nodeIds?.[0] || null,
 
       title,
 
@@ -121,7 +89,6 @@ export const createTask = async (c: Context) => {
 
       priority: priority || "medium",
 
-      labels: labels || [],
 
       dueDate: dueDate || null,
     });
@@ -144,7 +111,6 @@ export const createTask = async (c: Context) => {
     );
   }
 };
-
 
 // ======================================================
 // GET ALL TASKS
@@ -186,8 +152,6 @@ export const getAllTasks = async (c: Context) => {
       isActive: true,
     };
 
-    // ---------------- SEARCH ----------------
-
     if (search) {
       filter.$or = [
         {
@@ -205,19 +169,13 @@ export const getAllTasks = async (c: Context) => {
       ];
     }
 
-    // ---------------- STATUS ----------------
-
     if (status) {
       filter.status = status;
     }
 
-    // ---------------- PRIORITY ----------------
-
     if (priority) {
       filter.priority = priority;
     }
-
-    // ---------------- ASSIGNED USER ----------------
 
     if (assignedToId) {
       if (!isValidObjectId(assignedToId)) {
@@ -233,8 +191,6 @@ export const getAllTasks = async (c: Context) => {
       filter.assignedToId = assignedToId;
     }
 
-    // ---------------- NODE ----------------
-
     if (nodeId) {
       if (!isValidObjectId(nodeId)) {
         return c.json(
@@ -249,8 +205,6 @@ export const getAllTasks = async (c: Context) => {
       filter.nodeId = nodeId;
     }
 
-    // ---------------- DATE FILTER ----------------
-
     if (startDate || endDate) {
       filter.createdAt = {};
 
@@ -263,19 +217,11 @@ export const getAllTasks = async (c: Context) => {
       }
     }
 
-    // ---------------- DATA ----------------
-
     const [tasks, total] = await Promise.all([
       Task.find(filter)
         .populate("nodeId", "name type")
-        .populate(
-          "assignedToId",
-          "name email mobile"
-        )
-        .populate(
-          "createdById",
-          "name email mobile"
-        )
+        .populate("assignedToId", "name email mobile")
+        .populate("createdById", "name email mobile")
         .sort({
           [sortBy]: sortOrder,
         })
@@ -308,7 +254,6 @@ export const getAllTasks = async (c: Context) => {
   }
 };
 
-
 // ======================================================
 // GET SINGLE TASK
 // ======================================================
@@ -337,14 +282,8 @@ export const getTaskById = async (c: Context) => {
       isActive: true,
     })
       .populate("nodeId", "name type")
-      .populate(
-        "assignedToId",
-        "name email mobile"
-      )
-      .populate(
-        "createdById",
-        "name email mobile"
-      );
+      .populate("assignedToId", "name email mobile")
+      .populate("createdById", "name email mobile");
 
     if (!task) {
       return c.json(
@@ -371,7 +310,6 @@ export const getTaskById = async (c: Context) => {
   }
 };
 
-
 // ======================================================
 // UPDATE TASK
 // ======================================================
@@ -394,7 +332,7 @@ export const updateTask = async (c: Context) => {
       );
     }
 
-const scopeFilter = adaptTaskScopeFilter(await buildScopeFilter(user));
+    const scopeFilter = adaptTaskScopeFilter(await buildScopeFilter(user));
 
     const task = await Task.findOne({
       _id: id,
@@ -411,40 +349,6 @@ const scopeFilter = adaptTaskScopeFilter(await buildScopeFilter(user));
         404
       );
     }
-
-    // ---------------- NODE ----------------
-
-    if (body.nodeId) {
-      if (!isValidObjectId(body.nodeId)) {
-        return c.json(
-          {
-            success: false,
-            message: "Invalid nodeId",
-          },
-          400
-        );
-      }
-
-      const node = await BusinessNode.findOne({
-        _id: body.nodeId,
-        organizationId: user.organizationId,
-        isActive: true,
-      });
-
-      if (!node) {
-        return c.json(
-          {
-            success: false,
-            message: "Business node not found",
-          },
-          404
-        );
-      }
-
-      task.nodeId = body.nodeId;
-    }
-
-    // ---------------- ASSIGNED USER ----------------
 
     if (body.assignedToId) {
       if (!isValidObjectId(body.assignedToId)) {
@@ -463,20 +367,20 @@ const scopeFilter = adaptTaskScopeFilter(await buildScopeFilter(user));
         isActive: true,
       });
 
-      if (!assignedUser) {
+      if (!assignedUser || !assignedUser.nodeIds?.[0]) {
         return c.json(
           {
             success: false,
-            message: "Assigned user not found",
+            message: "Assigned user not found or has no node assigned",
           },
           404
         );
       }
 
-      task.assignedToId = body.assignedToId;
-    }
 
-    // ---------------- UPDATE ----------------
+      task.assignedToId = body.assignedToId;
+      task.nodeId = assignedUser.nodeIds?.[0];
+    }
 
     if (body.title !== undefined)
       task.title = body.title;
@@ -490,8 +394,6 @@ const scopeFilter = adaptTaskScopeFilter(await buildScopeFilter(user));
     if (body.priority !== undefined)
       task.priority = body.priority;
 
-    if (body.labels !== undefined)
-      task.labels = body.labels;
 
     if (body.dueDate !== undefined)
       task.dueDate = body.dueDate;
@@ -518,7 +420,6 @@ const scopeFilter = adaptTaskScopeFilter(await buildScopeFilter(user));
   }
 };
 
-
 // ======================================================
 // DELETE TASK
 // ======================================================
@@ -540,7 +441,7 @@ export const deleteTask = async (c: Context) => {
     }
 
     const scopeFilter = adaptTaskScopeFilter(await buildScopeFilter(user));
-    
+
     const task = await Task.findOne({
       _id: id,
       ...scopeFilter,
