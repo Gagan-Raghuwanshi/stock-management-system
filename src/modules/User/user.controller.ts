@@ -80,7 +80,6 @@ export const createUser = async (c: Context) => {
         ? getStringValue(body.organizationId)
         : String(creator.organizationId || "");
 
-        console.log(creator);
     if (!organizationId) {
       return c.json(
         {

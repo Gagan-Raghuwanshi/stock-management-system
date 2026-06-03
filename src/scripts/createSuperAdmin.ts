@@ -47,7 +47,7 @@ const seedSuperAdmin = async () => {
       superAdminRole = await Role.create({
         organizationId: organization._id,
 
-        name: "Super Admin",
+        name: "superAdmin",
 
         scope: "organization",
 

@@ -13,12 +13,50 @@ const validScopes = [
   "custom",
 ];
 
+const getRoleOrganizationId = (user: any, body?: any, queryOrgId?: string) => {
+  const creatorRoleName =
+    user?.roleId?.name || user?.roleName || user?.role;
+
+  return creatorRoleName === "superAdmin"
+    ? body?.organizationId || queryOrgId
+    : user.organizationId;
+};
+
+
 export const createRole = async (c: Context) => {
   try {
     const user = c.get("user");
     const body = await c.req.json();
 
-    const { name, permissions = [], scope = "self", canCreateRoles = [] } = body;
+    const {
+      name,
+      permissions = [],
+      scope = "self",
+      canCreateRoles = [],
+      organizationId: bodyOrganizationId,
+    } = body;
+
+    const creatorRoleName =
+      user?.roleId?.name || user?.roleName || user?.role;
+
+    const organizationId =
+      creatorRoleName === "superAdmin"
+        ? bodyOrganizationId
+        : user.organizationId;
+
+    if (!organizationId) {
+      return c.json(
+        { success: false, message: "organizationId is required" },
+        400
+      );
+    }
+
+    if (!isValidObjectId(organizationId)) {
+      return c.json(
+        { success: false, message: "Invalid organizationId" },
+        400
+      );
+    }
 
     if (!name) {
       return c.json({ success: false, message: "Role name is required" }, 400);
@@ -29,21 +67,30 @@ export const createRole = async (c: Context) => {
     }
 
     if (!Array.isArray(permissions)) {
-      return c.json({ success: false, message: "permissions must be array" }, 400);
+      return c.json(
+        { success: false, message: "permissions must be array" },
+        400
+      );
     }
 
     if (!Array.isArray(canCreateRoles)) {
-      return c.json({ success: false, message: "canCreateRoles must be array" }, 400);
+      return c.json(
+        { success: false, message: "canCreateRoles must be array" },
+        400
+      );
     }
 
     for (const id of canCreateRoles) {
       if (!isValidObjectId(id)) {
-        return c.json({ success: false, message: "Invalid canCreateRoles id" }, 400);
+        return c.json(
+          { success: false, message: "Invalid canCreateRoles id" },
+          400
+        );
       }
     }
 
     const exists = await Role.findOne({
-      organizationId: user.organizationId,
+      organizationId,
       name: name.trim(),
     });
 
@@ -53,7 +100,7 @@ export const createRole = async (c: Context) => {
 
     const validRoleCount = await Role.countDocuments({
       _id: { $in: canCreateRoles },
-      organizationId: user.organizationId,
+      organizationId,
       isActive: true,
     });
 
@@ -65,7 +112,7 @@ export const createRole = async (c: Context) => {
     }
 
     const role = await Role.create({
-      organizationId: user.organizationId,
+      organizationId,
       name: name.trim(),
       permissions,
       scope,
@@ -91,12 +138,33 @@ export const createRole = async (c: Context) => {
   }
 };
 
+
 export const getAllRoles = async (c: Context) => {
   try {
     const user = c.get("user");
 
+    const organizationId = getRoleOrganizationId(
+      user,
+      null,
+      c.req.query("organizationId")
+    );
+
+    if (!organizationId) {
+      return c.json(
+        { success: false, message: "organizationId is required" },
+        400
+      );
+    }
+
+    if (!isValidObjectId(organizationId)) {
+      return c.json(
+        { success: false, message: "Invalid organizationId" },
+        400
+      );
+    }
+
     const roles = await Role.find({
-      organizationId: user.organizationId,
+      organizationId,
     }).sort({ createdAt: -1 });
 
     return c.json({
@@ -114,13 +182,33 @@ export const getRoleById = async (c: Context) => {
     const user = c.get("user");
     const id = c.req.param("id");
 
+    const organizationId = getRoleOrganizationId(
+      user,
+      null,
+      c.req.query("organizationId")
+    );
+
+    if (!organizationId) {
+      return c.json(
+        { success: false, message: "organizationId is required" },
+        400
+      );
+    }
+
+    if (!isValidObjectId(organizationId)) {
+      return c.json(
+        { success: false, message: "Invalid organizationId" },
+        400
+      );
+    }
+
     if (!isValidObjectId(id)) {
       return c.json({ success: false, message: "Invalid role id" }, 400);
     }
 
     const role = await Role.findOne({
       _id: id,
-      organizationId: user.organizationId,
+      organizationId,
     });
 
     if (!role) {
@@ -142,13 +230,33 @@ export const updateRole = async (c: Context) => {
     const id = c.req.param("id");
     const body = await c.req.json();
 
+    const organizationId = getRoleOrganizationId(
+      user,
+      body,
+      c.req.query("organizationId")
+    );
+
+    if (!organizationId) {
+      return c.json(
+        { success: false, message: "organizationId is required" },
+        400
+      );
+    }
+
+    if (!isValidObjectId(organizationId)) {
+      return c.json(
+        { success: false, message: "Invalid organizationId" },
+        400
+      );
+    }
+
     if (!isValidObjectId(id)) {
       return c.json({ success: false, message: "Invalid role id" }, 400);
     }
 
     const role = await Role.findOne({
       _id: id,
-      organizationId: user.organizationId,
+      organizationId,
     });
 
     if (!role) {
@@ -164,12 +272,15 @@ export const updateRole = async (c: Context) => {
 
     if (body.name !== undefined) {
       if (!body.name) {
-        return c.json({ success: false, message: "Role name cannot be empty" }, 400);
+        return c.json(
+          { success: false, message: "Role name cannot be empty" },
+          400
+        );
       }
 
       const exists = await Role.findOne({
         _id: { $ne: id },
-        organizationId: user.organizationId,
+        organizationId,
         name: body.name.trim(),
       });
 
@@ -190,7 +301,10 @@ export const updateRole = async (c: Context) => {
 
     if (body.permissions !== undefined) {
       if (!Array.isArray(body.permissions)) {
-        return c.json({ success: false, message: "permissions must be array" }, 400);
+        return c.json(
+          { success: false, message: "permissions must be array" },
+          400
+        );
       }
 
       role.permissions = body.permissions;
@@ -198,18 +312,24 @@ export const updateRole = async (c: Context) => {
 
     if (body.canCreateRoles !== undefined) {
       if (!Array.isArray(body.canCreateRoles)) {
-        return c.json({ success: false, message: "canCreateRoles must be array" }, 400);
+        return c.json(
+          { success: false, message: "canCreateRoles must be array" },
+          400
+        );
       }
 
       for (const roleId of body.canCreateRoles) {
         if (!isValidObjectId(roleId)) {
-          return c.json({ success: false, message: "Invalid canCreateRoles id" }, 400);
+          return c.json(
+            { success: false, message: "Invalid canCreateRoles id" },
+            400
+          );
         }
       }
 
       const validRoleCount = await Role.countDocuments({
         _id: { $in: body.canCreateRoles },
-        organizationId: user.organizationId,
+        organizationId,
         isActive: true,
       });
 
@@ -248,13 +368,33 @@ export const deleteRole = async (c: Context) => {
     const user = c.get("user");
     const id = c.req.param("id");
 
+    const organizationId = getRoleOrganizationId(
+      user,
+      null,
+      c.req.query("organizationId")
+    );
+
+    if (!organizationId) {
+      return c.json(
+        { success: false, message: "organizationId is required" },
+        400
+      );
+    }
+
+    if (!isValidObjectId(organizationId)) {
+      return c.json(
+        { success: false, message: "Invalid organizationId" },
+        400
+      );
+    }
+
     if (!isValidObjectId(id)) {
       return c.json({ success: false, message: "Invalid role id" }, 400);
     }
 
     const role = await Role.findOne({
       _id: id,
-      organizationId: user.organizationId,
+      organizationId,
     });
 
     if (!role) {
