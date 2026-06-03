@@ -248,13 +248,33 @@ export const getProjectStructure = async (c: Context) => {
       );
     }
 
-    const scopeFilter: any = await buildScopeFilter(user);
+    const creatorRoleName =
+      user?.roleId?.name || user?.roleName || user?.role;
 
-    const project = await Project.findOne({
+    const queryOrganizationId = c.req.query("organizationId");
+
+    const projectQuery: any = {
       _id: projectId,
-      ...scopeFilter,
       status: "active",
-    });
+    };
+
+    if (creatorRoleName === "superAdmin") {
+      if (queryOrganizationId) {
+        if (!isMongoId(queryOrganizationId)) {
+          return c.json(
+            { success: false, message: "Invalid organizationId" },
+            400
+          );
+        }
+
+        projectQuery.organizationId = queryOrganizationId;
+      }
+    } else {
+      const scopeFilter: any = await buildScopeFilter(user);
+      Object.assign(projectQuery, scopeFilter);
+    }
+
+    const project = await Project.findOne(projectQuery);
 
     if (!project) {
       return c.json(
@@ -263,78 +283,79 @@ export const getProjectStructure = async (c: Context) => {
       );
     }
 
+    const organizationId = project.organizationId;
+
     const [towers, outsideAreas] = await Promise.all([
       Tower.find({
-        organizationId: user.organizationId,
+        organizationId,
         projectId,
-        isActive: true,
+        status: "active",
       }).sort({ createdAt: 1 }),
 
       Outside.find({
-        organizationId: user.organizationId,
+        organizationId,
         projectId,
-        isActive: true,
+        status: "active",
       }).sort({ createdAt: 1 }),
     ]);
 
-    const towerIds = towers.map((t) => t._id);
+    const towerIds = towers.map((tower) => tower._id);
 
     const floors = await Floor.find({
-      organizationId: user.organizationId,
-      projectId,
+      organizationId,
       towerId: { $in: towerIds },
-      isActive: true,
+      status: "active",
     }).sort({ createdAt: 1 });
 
-    const floorIds = floors.map((f) => f._id);
+    const floorIds = floors.map((floor) => floor._id);
 
     const flats = await Flat.find({
-      organizationId: user.organizationId,
-      projectId,
+      organizationId,
       floorId: { $in: floorIds },
-      isActive: true,
+      status: "active",
     }).sort({ createdAt: 1 });
 
     const structure = {
       project: {
         _id: project._id,
         name: project.projectName,
+        address: project.address,
         type: "project",
       },
 
       nonTowerArea: {
         type: "nonTowerArea",
         name: "Non Tower Area",
-        children: outsideAreas.map((area) => ({
+        children: outsideAreas.map((area: any) => ({
           _id: area._id,
           name: area.outsideName,
           type: "outside",
         })),
       },
 
-      towers: towers.map((tower) => {
+      towers: towers.map((tower: any) => {
         const towerFloors = floors.filter(
-          (floor) =>
-            String(floor.towerId) === String(tower._id)
+          (floor: any) => String(floor.towerId) === String(tower._id)
         );
 
         return {
           _id: tower._id,
           name: tower.towerName,
+          towerNumber: tower.towerNumber,
           type: "tower",
           totalFloors: towerFloors.length,
-          children: towerFloors.map((floor) => {
+          children: towerFloors.map((floor: any) => {
             const floorFlats = flats.filter(
-              (flat) =>
-                String(flat.floorId) === String(floor._id)
+              (flat: any) => String(flat.floorId) === String(floor._id)
             );
 
             return {
               _id: floor._id,
               name: floor.floorName,
+              floorNumber: floor.floorNumber,
               type: "floor",
               totalFlats: floorFlats.length,
-              children: floorFlats.map((flat) => ({
+              children: floorFlats.map((flat: any) => ({
                 _id: flat._id,
                 name: flat.flatName,
                 flatNumber: flat.flatNumber,
