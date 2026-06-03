@@ -7,6 +7,7 @@ import { Role } from "../roles/role.model";
 import { BusinessNode } from "../businessNode/businessNode.model";
 import { encryptPassword, decryptPassword } from "../../utils/crypto";
 import { buildScopeFilter } from "../../utils/buildScopeFilter";
+import { createRef } from "hono/jsx";
 
 const isValidObjectId = (id: any) => mongoose.Types.ObjectId.isValid(id);
 
@@ -79,6 +80,7 @@ export const createUser = async (c: Context) => {
         ? getStringValue(body.organizationId)
         : String(creator.organizationId || "");
 
+        console.log(creator);
     if (!organizationId) {
       return c.json(
         {
