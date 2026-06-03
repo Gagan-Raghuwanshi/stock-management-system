@@ -40,7 +40,7 @@ const seedSuperAdmin = async () => {
 
     let superAdminRole = await Role.findOne({
       organizationId: organization._id,
-      name: "Super Admin",
+      name: "superAdmin",
     });
 
     if (!superAdminRole) {
