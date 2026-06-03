@@ -143,29 +143,29 @@ export const getAllRoles = async (c: Context) => {
   try {
     const user = c.get("user");
 
-    const organizationId = getRoleOrganizationId(
-      user,
-      null,
-      c.req.query("organizationId")
-    );
+    const creatorRoleName =
+      user?.roleId?.name || user?.roleName || user?.role;
 
-    if (!organizationId) {
-      return c.json(
-        { success: false, message: "organizationId is required" },
-        400
-      );
+    const queryOrganizationId = c.req.query("organizationId");
+
+    const query: any = {};
+
+    if (creatorRoleName === "superAdmin") {
+      if (queryOrganizationId) {
+        if (!isValidObjectId(queryOrganizationId)) {
+          return c.json(
+            { success: false, message: "Invalid organizationId" },
+            400
+          );
+        }
+
+        query.organizationId = queryOrganizationId;
+      }
+    } else {
+      query.organizationId = user.organizationId;
     }
 
-    if (!isValidObjectId(organizationId)) {
-      return c.json(
-        { success: false, message: "Invalid organizationId" },
-        400
-      );
-    }
-
-    const roles = await Role.find({
-      organizationId,
-    }).sort({ createdAt: -1 });
+    const roles = await Role.find(query).sort({ createdAt: -1 });
 
     return c.json({
       success: true,
