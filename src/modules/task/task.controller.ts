@@ -64,20 +64,11 @@ export const createTask = async (c: Context) => {
       isActive: true,
     });
 
-    if (!assignedUser || !assignedUser.nodeIds?.[0]) {
-      return c.json(
-        {
-          success: false,
-          message: "Assigned user not found or has no node assigned",
-        },
-        404
-      );
-    }
 
     const task = await Task.create({
       organizationId: user.organizationId,
 
-      nodeId: assignedUser.nodeIds?.[0] || null,
+      nodeId: assignedUser?.nodeIds?.[0] || null,
 
       title,
 
@@ -367,19 +358,9 @@ export const updateTask = async (c: Context) => {
         isActive: true,
       });
 
-      if (!assignedUser || !assignedUser.nodeIds?.[0]) {
-        return c.json(
-          {
-            success: false,
-            message: "Assigned user not found or has no node assigned",
-          },
-          404
-        );
-      }
 
 
       task.assignedToId = body.assignedToId;
-      task.nodeId = assignedUser.nodeIds?.[0];
     }
 
     if (body.title !== undefined)
