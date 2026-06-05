@@ -12,8 +12,6 @@ const taskSchema = new mongoose.Schema(
     nodeId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "BusinessNode",
-      required: true,
-      index: true,
     },
 
     title: {
@@ -80,10 +78,6 @@ const taskSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-taskSchema.index({
-  organizationId: 1,
-  nodeId: 1,
-});
 
 taskSchema.index({
   organizationId: 1,
