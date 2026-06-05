@@ -25,9 +25,9 @@ advanceRoutes.get("/my", getMyAdvances);
 advanceRoutes.get("/:id", getAdvanceById);
 
 advanceRoutes.patch("/:id", updateAdvance);
-advanceRoutes.patch("/:id/settle", settleAdvance);
-advanceRoutes.patch("/:id/cancel", cancelAdvance);
+advanceRoutes.patch("/settle/:id", settleAdvance);
+advanceRoutes.patch("/cancel/:id", cancelAdvance);
 
-advanceRoutes.delete("/:id", deleteAdvance);
+advanceRoutes.delete("/delete/:id", deleteAdvance);
 
 export default advanceRoutes;
