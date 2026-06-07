@@ -82,7 +82,6 @@ export const createGeofence = async (c: Context) => {
 export const getGeofences = async (c: Context) => {
   try {
     const user = c.get("user");
-    const scopeFilter = await buildScopeFilter(user);
 
     const page = Number(c.req.query("page")) || 1;
     const limit = Number(c.req.query("limit")) || 10;
@@ -92,8 +91,15 @@ export const getGeofences = async (c: Context) => {
 
     const skip = (page - 1) * limit;
 
+    if (!user?.organizationId) {
+      return c.json(
+        { success: false, message: "organizationId not found in token" },
+        400
+      );
+    }
+
     const query: any = {
-      ...scopeFilter,
+      organizationId: user.organizationId,
     };
 
     if (search) {
@@ -107,7 +113,6 @@ export const getGeofences = async (c: Context) => {
       query.status = status;
     }
 
-    // Only for filtering list, not for create/update
     if (nodeId) {
       if (!isMongoId(nodeId)) {
         return c.json({ success: false, message: "Invalid nodeId" }, 400);
