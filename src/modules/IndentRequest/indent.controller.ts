@@ -111,17 +111,36 @@ const parseIndentBody = async (c: Context) => {
 
 const populateIndent = (query: any) => {
   return query
+    .populate("projectId", "projectName")
+    .populate("userId", "name email mobile")
     .populate("requestedBy", "name email mobile")
     .populate("ownerId", "name email mobile")
-    .populate("userId", "name email mobile")
     .populate("nodeId", "name type")
-    .populate("projectId", "projectName name")
-    .populate("towerId", "towerName name")
-    .populate("floorId", "floorName name")
-    .populate("flatId", "flatName name")
-    .populate("items.itemId", "itemName name")
-    .populate("items.unitId", "unitName name")
-    .populate("approvedBy", "name email mobile");
+    .populate("towerId", "towerName")
+    .populate("floorId", "floorName")
+    .populate("flatId", "flatNumber")
+    .populate({
+      path: "items.itemId",
+      select: "itemName itemCode newItemCode HSNcode rate price unitId groupId subGroupId",
+      populate: [
+        {
+          path: "unitId",
+          select: "unitName shortName",
+        },
+        {
+          path: "groupId",
+          select: "name groupName",
+        },
+        {
+          path: "subGroupId",
+          select: "name subGroupName",
+        },
+      ],
+    })
+    .populate({
+      path: "items.unitId",
+      select: "unitName shortName",
+    });
 };
 
 export const createIndent = async (c: Context) => {
