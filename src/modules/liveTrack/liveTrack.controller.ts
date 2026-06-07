@@ -124,21 +124,47 @@ export const getLiveTracks = async (c: Context) => {
 
     const skip = (page - 1) * limit;
 
-    const scopeFilter = buildScopeFilter(user);
+    const creatorRoleName =
+      user?.roleId?.name || user?.roleName || user?.role;
 
-    const match: any = {
-      ...scopeFilter,
-    };
+    const creatorScope = user?.roleId?.scope;
+
+    const match: any = {};
+
+    if (creatorRoleName === "superAdmin") {
+      // superAdmin can see all
+    } else {
+      if (!user?.organizationId) {
+        return c.json(
+          { success: false, message: "organizationId not found in token" },
+          400
+        );
+      }
+
+      match.organizationId = new mongoose.Types.ObjectId(user.organizationId);
+
+      if (creatorScope !== "organization") {
+        match.userId = new mongoose.Types.ObjectId(user._id);
+      }
+    }
 
     if (userId && mongoose.Types.ObjectId.isValid(userId)) {
-      match.userId = new mongoose.Types.ObjectId(userId);
+      const requestedUserId = new mongoose.Types.ObjectId(userId);
+
+      if (creatorRoleName === "superAdmin" || creatorScope === "organization") {
+        match.userId = requestedUserId;
+      } else if (String(userId) !== String(user._id)) {
+        return c.json(
+          { success: false, message: "You can only view your own live track" },
+          403
+        );
+      }
     }
 
     const pipeline: any[] = [
       {
         $match: match,
       },
-
       {
         $lookup: {
           from: "users",
@@ -147,7 +173,6 @@ export const getLiveTracks = async (c: Context) => {
           as: "user",
         },
       },
-
       {
         $unwind: {
           path: "$user",
