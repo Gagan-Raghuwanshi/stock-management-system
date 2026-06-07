@@ -146,6 +146,8 @@ export const getAllRoles = async (c: Context) => {
     const creatorRoleName =
       user?.roleId?.name || user?.roleName || user?.role;
 
+    const creatorScope = user?.roleId?.scope;
+
     const queryOrganizationId = c.req.query("organizationId");
 
     const query: any = {};
@@ -162,7 +164,18 @@ export const getAllRoles = async (c: Context) => {
         query.organizationId = queryOrganizationId;
       }
     } else {
+      if (!user?.organizationId) {
+        return c.json(
+          { success: false, message: "organizationId not found in token" },
+          400
+        );
+      }
+
       query.organizationId = user.organizationId;
+
+      if (creatorScope !== "organization") {
+        query.scope = "self";
+      }
     }
 
     const roles = await Role.find(query).sort({ createdAt: -1 });
