@@ -18,7 +18,7 @@ export const login = async (c: Context) => {
   try {
     const body = await c.req.json();
 
-    const { emailOrMobile, password, deviceId } = body;
+    const { emailOrMobile, password } = body;
 
     if (!emailOrMobile || !password) {
       return c.json(
@@ -99,38 +99,6 @@ export const login = async (c: Context) => {
         },
         401
       );
-    }
-
-    const roleName = (user.roleId as any)?.name || "";
-
-    // ✅ skip for superadmin & organization
-    if (roleName !== "superAdmin" && roleName !== "organization") {
-      const existingDevice = await UserDevice.findOne({
-        userId: user._id,
-      });
-
-      if (existingDevice) {
-        if (!deviceId) {
-          return c.json(
-            {
-              success: false,
-              message: "deviceId is required",
-            },
-            400
-          );
-        }
-
-        // already saved device check
-        if (existingDevice.deviceId !== deviceId) {
-          return c.json(
-            {
-              success: false,
-              message: "Please login with your real device",
-            },
-            403
-          );
-        }
-      }
     }
 
     const token = generateToken({
