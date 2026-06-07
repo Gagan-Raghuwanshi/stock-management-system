@@ -118,10 +118,13 @@ export const getFlats = async (c: Context) => {
 
     const total = await Flat.countDocuments(query);
 
-    const flats = await Flat.find(query)
-      .populate(populateFloor)
-      .skip(skip)
-      .limit(limit);
+    const allFlats = await Flat.find(query).populate(populateFloor).lean();
+
+    allFlats.sort((a: any, b: any) => {
+      return Number(a.flatNumber) - Number(b.flatNumber);
+    });
+
+    const flats = allFlats.slice(skip, skip + limit);
 
     return c.json({
       success: true,

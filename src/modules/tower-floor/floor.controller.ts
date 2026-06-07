@@ -110,10 +110,15 @@ export const getFloors = async (c: Context) => {
 
     const total = await Floor.countDocuments(query);
 
-    const floors = await Floor.find(query)
+    const allFloors = await Floor.find(query)
       .populate("towerId", "towerName towerNumber")
-      .skip(skip)
-      .limit(limit);
+      .lean();
+
+    allFloors.sort((a: any, b: any) => {
+      return Number(a.floorName) - Number(b.floorName);
+    });
+
+    const floors = allFloors.slice(skip, skip + limit);
 
     return c.json({
       success: true,
