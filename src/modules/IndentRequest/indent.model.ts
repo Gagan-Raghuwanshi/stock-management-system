@@ -17,6 +17,7 @@ const indentItemSchema = new mongoose.Schema(
       ref: "Unit",
       required: true,
     },
+
     price: {
       type: Number,
       required: true,   
@@ -69,7 +70,7 @@ const indentSchema = new mongoose.Schema(
 
     indentFor: {
       type: String,
-      enum: ["project", "tower", "floor", "flat"],
+      enum: ["project", "tower", "floor", "flat","outside"],
       required: true,
       index: true,
     },
@@ -91,7 +92,12 @@ const indentSchema = new mongoose.Schema(
       ref: "Flat",
       default: null,
     },
-
+    outsideId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Outside",
+      default: null,
+      index: true,
+    },
     storageLocation: {
       type: String,
       default: null,

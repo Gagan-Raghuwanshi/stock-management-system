@@ -119,6 +119,7 @@ const populateIndent = (query: any) => {
     .populate("towerId", "towerName")
     .populate("floorId", "floorName")
     .populate("flatId", "flatNumber")
+    .populate("outsideId", "outsideName outsideNote projectId status")
     .populate({
       path: "items.itemId",
       select: "itemName itemCode newItemCode HSNcode rate price unitId groupId subGroupId",
@@ -158,6 +159,7 @@ export const createIndent = async (c: Context) => {
       towerId,
       floorId,
       flatId,
+      outsideId,
       storageLocation,
       items = [],
       status,
@@ -185,7 +187,7 @@ export const createIndent = async (c: Context) => {
       return c.json({ success: false, message: "Invalid priority" }, 400);
     }
 
-    if (!["project", "tower", "floor", "flat"].includes(indentFor)) {
+    if (!["project", "tower", "floor", "flat", "outside"].includes(indentFor)) {
       return c.json({ success: false, message: "Invalid indentFor" }, 400);
     }
 
@@ -199,6 +201,17 @@ export const createIndent = async (c: Context) => {
 
     if (flatId && !isValidObjectId(flatId)) {
       return c.json({ success: false, message: "Invalid flatId" }, 400);
+    }
+
+    if (outsideId && !isValidObjectId(outsideId)) {
+      return c.json({ success: false, message: "Invalid outsideId" }, 400);
+    }
+
+    if (indentFor === "outside" && !outsideId) {
+      return c.json(
+        { success: false, message: "outsideId is required for outside indent" },
+        400
+      );
     }
 
     if (!Array.isArray(items) || items.length === 0) {
@@ -259,10 +272,23 @@ export const createIndent = async (c: Context) => {
       estimateDeliveryDate: estimateDeliveryDate
         ? new Date(estimateDeliveryDate)
         : null,
+
       indentFor,
-      towerId: towerId || null,
-      floorId: floorId || null,
-      flatId: flatId || null,
+
+      towerId:
+        indentFor === "tower" || indentFor === "floor" || indentFor === "flat"
+          ? towerId || null
+          : null,
+
+      floorId:
+        indentFor === "floor" || indentFor === "flat"
+          ? floorId || null
+          : null,
+
+      flatId: indentFor === "flat" ? flatId || null : null,
+
+      outsideId: indentFor === "outside" ? outsideId : null,
+
       storageLocation: storageLocation || null,
       items,
       images,
@@ -302,6 +328,7 @@ export const getAllIndents = async (c: Context) => {
       userId,
       priority,
       indentFor,
+      outsideId,
     } = c.req.query();
 
     const pageNumber = Math.max(Number(page) || 1, 1);
@@ -324,6 +351,14 @@ export const getAllIndents = async (c: Context) => {
         return c.json({ success: false, message: "Invalid projectId" }, 400);
       }
       filter.projectId = projectId;
+    }
+
+    if (outsideId) {
+      if (!isValidObjectId(outsideId)) {
+        return c.json({ success: false, message: "Invalid outsideId" }, 400);
+      }
+
+      filter.outsideId = outsideId;
     }
 
     if (userId) {
@@ -462,6 +497,7 @@ export const updateIndent = async (c: Context) => {
       towerId,
       floorId,
       flatId,
+      outsideId,
       storageLocation,
       items,
     } = body;
@@ -486,32 +522,64 @@ export const updateIndent = async (c: Context) => {
         : null;
     }
 
+    let finalIndentFor = indentFor || indent.indentFor;
+
     if (indentFor !== undefined) {
-      if (!["project", "tower", "floor", "flat"].includes(indentFor)) {
+      if (!["project", "tower", "floor", "flat", "outside"].includes(indentFor)) {
         return c.json({ success: false, message: "Invalid indentFor" }, 400);
       }
+
       indent.indentFor = indentFor;
     }
 
-    if (towerId !== undefined) {
-      if (towerId && !isValidObjectId(towerId)) {
-        return c.json({ success: false, message: "Invalid towerId" }, 400);
+    if (finalIndentFor === "outside") {
+      const finalOutsideId = outsideId !== undefined ? outsideId : indent.outsideId;
+
+      if (!finalOutsideId) {
+        return c.json(
+          { success: false, message: "outsideId is required for outside indent" },
+          400
+        );
       }
-      indent.towerId = towerId || null;
+
+      if (!isValidObjectId(finalOutsideId)) {
+        return c.json({ success: false, message: "Invalid outsideId" }, 400);
+      }
+
+      indent.outsideId = finalOutsideId as any;
+      indent.towerId = null;
+      indent.floorId = null;
+      indent.flatId = null;
+    } else {
+      indent.outsideId = null;
+
+      if (towerId !== undefined) {
+        if (towerId && !isValidObjectId(towerId)) {
+          return c.json({ success: false, message: "Invalid towerId" }, 400);
+        }
+        indent.towerId = towerId || null;
+      }
+
+      if (floorId !== undefined) {
+        if (floorId && !isValidObjectId(floorId)) {
+          return c.json({ success: false, message: "Invalid floorId" }, 400);
+        }
+        indent.floorId = floorId || null;
+      }
+
+      if (flatId !== undefined) {
+        if (flatId && !isValidObjectId(flatId)) {
+          return c.json({ success: false, message: "Invalid flatId" }, 400);
+        }
+        indent.flatId = flatId || null;
+      }
     }
 
-    if (floorId !== undefined) {
-      if (floorId && !isValidObjectId(floorId)) {
-        return c.json({ success: false, message: "Invalid floorId" }, 400);
-      }
-      indent.floorId = floorId || null;
-    }
-
-    if (flatId !== undefined) {
-      if (flatId && !isValidObjectId(flatId)) {
-        return c.json({ success: false, message: "Invalid flatId" }, 400);
-      }
-      indent.flatId = flatId || null;
+    if (outsideId !== undefined && finalIndentFor !== "outside") {
+      return c.json(
+        { success: false, message: "outsideId is allowed only for outside indent" },
+        400
+      );
     }
 
     if (storageLocation !== undefined) {
