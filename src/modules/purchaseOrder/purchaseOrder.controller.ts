@@ -1,7 +1,6 @@
 import type { Context } from "hono";
 import mongoose from "mongoose";
 import { PurchaseOrder } from "./purchaseOrder.model";
-import { ApprovalFlow } from "../approvalFlow/approvalFlow.model";
 import { MaterialStock } from "../materialStock/materialStock.model";
 import { Indent } from "../IndentRequest/indent.model";
 import { buildScopeFilter } from "../../utils/buildScopeFilter";
@@ -12,14 +11,6 @@ const getLoggedInUserId = (user: any) => user?._id || user?.id;
 
 const getUserScope = (user: any) => {
   return user?.scope || user?.role?.scope || user?.roleId?.scope;
-};
-
-const getUserRoleId = (user: any) => {
-  return user?.roleId?._id || user?.roleId || user?.role?._id || user?.role;
-};
-
-const isOrganizationAdmin = (user: any) => {
-  return getUserScope(user) === "organization";
 };
 
 const generatePoNo = async (organizationId: string) => {
@@ -83,7 +74,6 @@ export const createPurchaseOrderFromIndent = async (c: Context) => {
       vendorMobile,
       vendorAddress,
       items = [],
-      bypassApproval = false,
     } = body;
 
     if (!indentId || !vendorId) {
@@ -96,6 +86,7 @@ export const createPurchaseOrderFromIndent = async (c: Context) => {
     if (!isValidObjectId(indentId)) {
       return c.json({ success: false, message: "Invalid indentId" }, 400);
     }
+
     if (!isValidObjectId(vendorId)) {
       return c.json({ success: false, message: "Invalid vendorId" }, 400);
     }
@@ -177,45 +168,6 @@ export const createPurchaseOrderFromIndent = async (c: Context) => {
       };
     });
 
-    const flow = await ApprovalFlow.findOne({
-      organizationId: loggedInUser.organizationId,
-      moduleName: "purchaseOrder",
-      status: "active",
-      isActive: true,
-    }).sort({ createdAt: -1 });
-
-    let status = "PendingApproval";
-    let currentApprovalLevel = 1;
-    let approvals: any[] = [];
-    let approvedBy = null;
-    let approvedAt = null;
-
-    if (isOrganizationAdmin(loggedInUser) && bypassApproval === true) {
-      status = "Approved";
-      currentApprovalLevel = 0;
-      approvedBy = loggedInUserId;
-      approvedAt = new Date();
-    } else {
-      if (!flow) {
-        return c.json(
-          {
-            success: false,
-            message: "Purchase order approval flow not found",
-          },
-          400
-        );
-      }
-
-      approvals = flow.levels.map((level: any) => ({
-        level: level.level,
-        roleId: level.roleId,
-        status: "Pending",
-        approvedBy: null,
-        approvedAt: null,
-        rejectionReason: null,
-      }));
-    }
-
     const poNo = await generatePoNo(loggedInUser.organizationId);
 
     const po = await PurchaseOrder.create({
@@ -230,19 +182,23 @@ export const createPurchaseOrderFromIndent = async (c: Context) => {
       vendorAddress: vendorAddress || null,
       items: poItems,
       totalAmount,
-      status,
-      approvalFlowId: flow?._id || null,
-      currentApprovalLevel,
-      approvals,
+
+      status: "Approved",
+      approvalFlowId: null,
+      currentApprovalLevel: 0,
+      approvals: [],
+
       createdBy: loggedInUserId,
-      approvedBy,
-      approvedAt,
+      approvedBy: loggedInUserId,
+      approvedAt: new Date(),
     });
 
     indent.status = "ConvertedToPO";
     await indent.save();
 
-    const populatedPo = await populatePurchaseOrder(PurchaseOrder.findById(po._id));
+    const populatedPo = await populatePurchaseOrder(
+      PurchaseOrder.findById(po._id)
+    );
 
     return c.json(
       {
@@ -258,98 +214,14 @@ export const createPurchaseOrderFromIndent = async (c: Context) => {
 };
 
 export const approvePurchaseOrder = async (c: Context) => {
-  try {
-    const loggedInUser = c.get("user");
-    const loggedInUserId = getLoggedInUserId(loggedInUser);
-    const userRoleId = String(getUserRoleId(loggedInUser));
-    const id = c.req.param("id");
-    const body = await c.req.json();
-
-    const { status, rejectionReason } = body;
-
-    if (!isValidObjectId(id)) {
-      return c.json({ success: false, message: "Invalid purchase order id" }, 400);
-    }
-
-    if (!["Approved", "Rejected"].includes(status)) {
-      return c.json({ success: false, message: "Invalid status" }, 400);
-    }
-
-    const po = await PurchaseOrder.findOne({
-      _id: id,
-      organizationId: loggedInUser.organizationId,
-      isActive: true,
-    });
-
-    if (!po) {
-      return c.json({ success: false, message: "Purchase order not found" }, 404);
-    }
-
-    if (po.status !== "PendingApproval") {
-      return c.json(
-        { success: false, message: "Purchase order is not pending approval" },
-        400
-      );
-    }
-
-    const currentApproval = po.approvals.find(
-      (item: any) => item.level === po.currentApprovalLevel
-    );
-
-    if (!currentApproval) {
-      return c.json({ success: false, message: "Current approval level not found" }, 400);
-    }
-
-    if (String(currentApproval.roleId) !== userRoleId) {
-      return c.json(
-        { success: false, message: "You are not allowed to approve this level" },
-        403
-      );
-    }
-
-    currentApproval.status = status;
-    currentApproval.approvedBy = loggedInUserId;
-    currentApproval.approvedAt = new Date();
-
-    if (status === "Rejected") {
-      currentApproval.rejectionReason = rejectionReason || null;
-      po.status = "Rejected";
-      await po.save();
-
-      const populatedPo = await populatePurchaseOrder(PurchaseOrder.findById(po._id));
-
-      return c.json({
-        success: true,
-        message: "Purchase order rejected successfully",
-        data: populatedPo,
-      });
-    }
-
-    const nextApproval = po.approvals.find(
-      (item: any) => item.level === po.currentApprovalLevel + 1
-    );
-
-    if (nextApproval) {
-      po.currentApprovalLevel += 1;
-    } else {
-      po.status = "Approved";
-      po.currentApprovalLevel = 0;
-      po.approvedBy = loggedInUserId;
-      po.approvedAt = new Date();
-    }
-
-    await po.save();
-
-    const populatedPo = await populatePurchaseOrder(PurchaseOrder.findById(po._id));
-
-    return c.json({
-      success: true,
-      message: "Purchase order approval updated successfully",
-      data: populatedPo,
-    });
-  } catch (error: any) {
-    return c.json({ success: false, message: error.message }, 400);
-  }
+  return c.json(
+    {
+      success: false,
+      message:
+        "Purchase order approval flow removed. PO is created as Approved after indent approval.",
+    },
+    400
+  );
 };
 
 export const markPurchaseOrderOrdered = async (c: Context) => {
@@ -358,7 +230,10 @@ export const markPurchaseOrderOrdered = async (c: Context) => {
     const id = c.req.param("id");
 
     if (!isValidObjectId(id)) {
-      return c.json({ success: false, message: "Invalid purchase order id" }, 400);
+      return c.json(
+        { success: false, message: "Invalid purchase order id" },
+        400
+      );
     }
 
     const po = await PurchaseOrder.findOne({
@@ -402,7 +277,10 @@ export const receivePurchaseOrderMaterial = async (c: Context) => {
     const { items = [] } = body;
 
     if (!isValidObjectId(id)) {
-      return c.json({ success: false, message: "Invalid purchase order id" }, 400);
+      return c.json(
+        { success: false, message: "Invalid purchase order id" },
+        400
+      );
     }
 
     const po = await PurchaseOrder.findOne({
@@ -433,6 +311,13 @@ export const receivePurchaseOrderMaterial = async (c: Context) => {
       const poItem: any = po.items.find(
         (item: any) => String(item.itemId) === String(receivedItem.itemId)
       );
+
+      if (!poItem) {
+        return c.json(
+          { success: false, message: "PO item not found" },
+          400
+        );
+      }
 
       const receivedQty = Number(receivedItem.receivedQuantity || 0);
 
@@ -496,7 +381,10 @@ export const issueMaterialToRequester = async (c: Context) => {
     const id = c.req.param("id");
 
     if (!isValidObjectId(id)) {
-      return c.json({ success: false, message: "Invalid purchase order id" }, 400);
+      return c.json(
+        { success: false, message: "Invalid purchase order id" },
+        400
+      );
     }
 
     const po = await PurchaseOrder.findOne({
@@ -536,29 +424,29 @@ export const issueMaterialToRequester = async (c: Context) => {
           sourceId: po._id,
         });
 
-      if (stock) {
-        stock.purchasedQuantity += extraQty;
-        stock.receivedQuantity += extraQty;
-        stock.availableQuantity += extraQty;
-        await stock.save();
-      } else {
-        await MaterialStock.create({
-          organizationId: po.organizationId,
-          projectId: po.projectId,
-          indentId: po.indentId,
-          purchaseOrderId: po._id,
-          requesterId: po.requesterId,
-          itemId: item.itemId,
-          unitId: item.unitId,
+        if (stock) {
+          stock.purchasedQuantity += extraQty;
+          stock.receivedQuantity += extraQty;
+          stock.availableQuantity += extraQty;
+          await stock.save();
+        } else {
+          await MaterialStock.create({
+            organizationId: po.organizationId,
+            projectId: po.projectId,
+            indentId: po.indentId,
+            purchaseOrderId: po._id,
+            requesterId: po.requesterId,
+            itemId: item.itemId,
+            unitId: item.unitId,
 
-          purchasedQuantity: extraQty,
-          receivedQuantity: extraQty,
-          issuedQuantity: 0,
-          availableQuantity: extraQty,
+            purchasedQuantity: extraQty,
+            receivedQuantity: extraQty,
+            issuedQuantity: 0,
+            availableQuantity: extraQty,
 
-          status: "Available",
-        });
-      }
+            status: "Available",
+          });
+        }
       }
     }
 
@@ -654,7 +542,10 @@ export const getPurchaseOrderById = async (c: Context) => {
     const id = c.req.param("id");
 
     if (!isValidObjectId(id)) {
-      return c.json({ success: false, message: "Invalid purchase order id" }, 400);
+      return c.json(
+        { success: false, message: "Invalid purchase order id" },
+        400
+      );
     }
 
     const scopeFilter = await buildPurchaseOrderScopeFilter(loggedInUser);
@@ -686,7 +577,10 @@ export const cancelPurchaseOrder = async (c: Context) => {
     const id = c.req.param("id");
 
     if (!isValidObjectId(id)) {
-      return c.json({ success: false, message: "Invalid purchase order id" }, 400);
+      return c.json(
+        { success: false, message: "Invalid purchase order id" },
+        400
+      );
     }
 
     const scopeFilter = await buildPurchaseOrderScopeFilter(loggedInUser);
