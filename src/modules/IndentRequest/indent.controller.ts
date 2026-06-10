@@ -14,7 +14,7 @@ const getUserScope = (user: any) => {
 };
 
 const canManageIndentStatus = (user: any) => {
-  return getUserScope(user) === "organization";
+  return ["organization", "team"].includes(getUserScope(user));
 };
 
 const buildIndentScopeFilter = async (loggedInUser: any) => {
@@ -342,7 +342,20 @@ export const getAllIndents = async (c: Context) => {
       isActive: true,
     };
 
-    if (status) filter.status = status;
+    const scope = getUserScope(loggedInUser);
+
+    if (status) {
+      filter.status = status;
+    } else {
+      if (scope === "team") {
+        filter.status = "Pending";
+      }
+
+      if (scope === "organization") {
+        filter.status = "ManagerApproved";
+      }
+    }
+
     if (priority) filter.priority = priority;
     if (indentFor) filter.indentFor = indentFor;
 
@@ -439,13 +452,23 @@ export const getIndentById = async (c: Context) => {
 
     const scopeFilter: any = await buildIndentScopeFilter(loggedInUser);
 
-    const indent = await populateIndent(
-      Indent.findOne({
-        _id: id,
-        ...scopeFilter,
-        isActive: true,
-      })
-    );
+    const query: any = {
+      _id: id,
+      ...scopeFilter,
+      isActive: true,
+    };
+
+    const scope = getUserScope(loggedInUser);
+
+    if (scope === "team") {
+      query.status = "Pending";
+    }
+
+    if (scope === "organization") {
+      query.status = "ManagerApproved";
+    }
+
+    const indent = await populateIndent(Indent.findOne(query));
 
     if (!indent) {
       return c.json({ success: false, message: "Indent not found" }, 404);
@@ -675,7 +698,27 @@ export const updateIndentStatus = async (c: Context) => {
       return c.json({ success: false, message: "Indent not found" }, 404);
     }
 
-    indent.status = status;
+    const scope = getUserScope(loggedInUser);
+
+    if (scope === "team" && indent.status !== "Pending") {
+      return c.json(
+        { success: false, message: "Only pending indent can be approved by team" },
+        400
+      );
+    }
+
+    if (scope === "organization" && indent.status !== "ManagerApproved") {
+      return c.json(
+        { success: false, message: "Only manager approved indent can be approved by admin" },
+        400
+      );
+    }
+
+    if (scope === "team" && status === "Approved") {
+      indent.status = "ManagerApproved";
+    } else {
+      indent.status = status;
+    }
 
     if (status === "Approved") {
       indent.approvedBy = getLoggedInUserId(loggedInUser);

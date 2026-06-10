@@ -112,7 +112,7 @@ const indentSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["Pending", "Approved", "Rejected", "ConvertedToPO"],
+      enum: ["Pending", "Approved", "Rejected", "ConvertedToPO","ManagerApproved"],
       default: "Pending",
       index: true,
     },
