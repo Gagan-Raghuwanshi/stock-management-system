@@ -651,6 +651,13 @@ export const updateIndent = async (c: Context) => {
       indent.images = [...(indent.images || []), ...images] as any;
     }
 
+    if (indent.status === "Rejected") {
+      indent.status = "Pending";
+      indent.rejectionReason = null;
+      indent.approvedBy = null;
+      indent.approvedAt = null;
+    }
+
     await indent.save();
 
     const updatedIndent = await populateIndent(Indent.findById(indent._id));
