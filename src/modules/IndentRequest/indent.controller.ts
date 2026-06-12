@@ -350,10 +350,6 @@ export const getAllIndents = async (c: Context) => {
     if (status) {
       filter.status = status;
     } else {
-      if (scope === "team") {
-        filter.status = "Pending";
-      }
-
       if (scope === "organization") {
         filter.status = "ManagerApproved";
       }
@@ -376,7 +372,6 @@ export const getAllIndents = async (c: Context) => {
       filter.outsideId = outsideId;
     }
 
-    // ✅ team me userId filter allow mat karo, warna fir same issue aayega
     if (userId && scope !== "team") {
       if (!isValidObjectId(userId)) {
         return c.json({ success: false, message: "Invalid userId" }, 400);
@@ -447,14 +442,8 @@ export const getIndentById = async (c: Context) => {
       isActive: true,
     };
 
-    // ✅ team ko organization ke Pending indent dikhane hain
-    // isliye team me userId filter nahi lagayenge
     if (scope !== "team") {
       Object.assign(query, scopeFilter);
-    }
-
-    if (scope === "team") {
-      query.status = "Pending";
     }
 
     if (scope === "organization") {
