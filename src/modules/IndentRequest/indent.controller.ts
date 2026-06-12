@@ -335,14 +335,17 @@ export const getAllIndents = async (c: Context) => {
     const limitNumber = Math.max(Number(limit) || 10, 1);
     const skip = (pageNumber - 1) * limitNumber;
 
+    const scope = getUserScope(loggedInUser);
     const scopeFilter: any = await buildIndentScopeFilter(loggedInUser);
 
     const filter: any = {
-      ...scopeFilter,
+      organizationId: scopeFilter.organizationId,
       isActive: true,
     };
 
-    const scope = getUserScope(loggedInUser);
+    if (scope !== "team") {
+      Object.assign(filter, scopeFilter);
+    }
 
     if (status) {
       filter.status = status;
@@ -370,44 +373,29 @@ export const getAllIndents = async (c: Context) => {
       if (!isValidObjectId(outsideId)) {
         return c.json({ success: false, message: "Invalid outsideId" }, 400);
       }
-
       filter.outsideId = outsideId;
     }
 
-    if (userId) {
+    // ✅ team me userId filter allow mat karo, warna fir same issue aayega
+    if (userId && scope !== "team") {
       if (!isValidObjectId(userId)) {
         return c.json({ success: false, message: "Invalid userId" }, 400);
       }
 
-      const scope = getUserScope(loggedInUser);
-
       if (scope === "organization") {
         filter.userId = userId;
-      } else if (scope === "team") {
-        if (filter.userId?.$in) {
-          const allowedIds = filter.userId.$in.map((id: any) => String(id));
-
-          if (!allowedIds.includes(String(userId))) {
-            return c.json(
-              { success: false, message: "You are not allowed to view this user indents" },
-              403
-            );
-          }
-
-          filter.userId = userId;
-        } else if (String(filter.userId) !== String(userId)) {
-          return c.json(
-            { success: false, message: "You are not allowed to view this user indents" },
-            403
-          );
-        }
       } else {
         if (String(filter.userId) !== String(userId)) {
           return c.json(
-            { success: false, message: "You are not allowed to view this user indents" },
+            {
+              success: false,
+              message: "You are not allowed to view this user indents",
+            },
             403
           );
         }
+
+        filter.userId = userId;
       }
     }
 
@@ -450,15 +438,20 @@ export const getIndentById = async (c: Context) => {
       return c.json({ success: false, message: "Invalid indent id" }, 400);
     }
 
+    const scope = getUserScope(loggedInUser);
     const scopeFilter: any = await buildIndentScopeFilter(loggedInUser);
 
     const query: any = {
       _id: id,
-      ...scopeFilter,
+      organizationId: scopeFilter.organizationId,
       isActive: true,
     };
 
-    const scope = getUserScope(loggedInUser);
+    // ✅ team ko organization ke Pending indent dikhane hain
+    // isliye team me userId filter nahi lagayenge
+    if (scope !== "team") {
+      Object.assign(query, scopeFilter);
+    }
 
     if (scope === "team") {
       query.status = "Pending";
